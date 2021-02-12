@@ -91,15 +91,24 @@ object Movie extends App {
 
   implicit object ParsableMovie extends Parsable[Movie] {
     /**
-      * Method to yield a Try[Movie] from a String representing a line of input of the movie database file.
-      *
-      * TODO 11 points.
-      *
-      * @param w a line of input.
-      * @return a Try[Movie]
-      */
-    def parse(w: String): Try[Movie] = ??? // TO BE IMPLEMENTED
+     * Method to yield a Try[Movie] from a String representing a line of input of the movie database file.
+     *
+     * TODO 11 points.
+     *
+     * @param w a line of input.
+     * @return a Try[Movie]
+     */
+    def parse(w: String): Try[Movie] = {
+      val wa:Array[String] = w.split(",")
+      val ws:Seq[String] = wa.toSeq()
+      def movie = Movie.apply(ws)
+      movie match {
+        case isSuccess => movie
+        case isFailure => println("Info from the exception: " + e.getMessgae)
+      } // TO BE IMPLEMENTED
+    }
   }
+
 
   val ingester = new Ingest[Movie]()
   if (args.length > 0) {
@@ -119,9 +128,8 @@ object Movie extends App {
   def elements(list: Seq[String], indices: Int*): List[String] = {
     // Hint: form a new list which is consisted by the elements in list in position indices. Int* means array of Int.
     // 6 points
-    val result: Seq[String] =
+    val result: Seq[String] = for (i <- indices) yield list.apply(i)
     // TO BE IMPLEMENTED
-    ???
     result.toList
   }
 
