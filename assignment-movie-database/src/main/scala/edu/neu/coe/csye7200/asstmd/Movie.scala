@@ -2,7 +2,8 @@ package edu.neu.coe.csye7200.asstmd
 
 import scala.io.Source
 import scala.util.Try
-
+import scala.util.Success
+import scala.util.Failure
 /**
   * This class represents a Movie from the IMDB data file on Kaggle.
   * Although the limitation on 22 fields in a case class has partially gone away, it's still convenient to group the different attributes together into logical classes.
@@ -100,12 +101,14 @@ object Movie extends App {
      */
     def parse(w: String): Try[Movie] = {
       val wa:Array[String] = w.split(",")
-      val ws:Seq[String] = wa.toSeq()
+      val ws:Seq[String] = wa.toSeq
       def movie = Movie.apply(ws)
-      movie match {
-        case isSuccess => movie
-        case isFailure => println("Info from the exception: " + e.getMessgae)
-      } // TO BE IMPLEMENTED
+      Try(movie)
+
+//      match {
+//        case Success(m) => Movie.apply(ws)
+//        case Failure(e) => println("Info from the exception: " + e.getMessgae)
+//      } // TO BE IMPLEMENTED
     }
   }
 
@@ -209,8 +212,11 @@ object Rating {
     */
   // Hint: This should similar to apply method in Object Name. The parameter of apply in case match should be same as case class Rating
   // 13 points
-  def apply(s: String): Rating = ??? // TO BE IMPLEMENTED
-
+  def apply(s: String): Rating = (for (ws <- rRating.unapplySeq(s)) yield for (w <- ws) yield Option(w))
+  match {
+    case Some(Seq(Some(code), _, maybeAge)) => Rating(code, maybeAge.flatMap(s => Try(s.toInt).toOption))
+    case x => throw ParseException(s"parse error in Rating: $s (parsed as $x)")
+  } // TO BE IMPLEMENTED
 }
 
 case class ParseException(w: String) extends Exception(w)
