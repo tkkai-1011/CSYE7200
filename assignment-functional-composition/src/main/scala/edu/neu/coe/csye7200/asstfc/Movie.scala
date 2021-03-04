@@ -97,12 +97,19 @@ object Movie extends App {
   trait IngestibleMovie extends Ingestible[Movie] {
     def fromString(w: String): Try[Movie] = Movie.parse(w.split(",").toSeq)
   }
-
+  case class Movies(movies: Seq[Movie])
   //Hint: You may refer to the slides discussed in class for how to serialize object to json
   object MoviesProtocol extends DefaultJsonProtocol {
     // 20 points
     // TO BE IMPLEMENTED
-    ???
+    implicit val fFormat = jsonFormat4(Format.apply)
+    implicit val nameFormat = jsonFormat4(Name.apply)
+    implicit val ratingFormat = jsonFormat2(Rating.apply)
+    implicit val productionFormat = jsonFormat4(Production.apply)
+    implicit val reviewsFormat = jsonFormat7(Reviews.apply)
+    implicit val principalFormat = jsonFormat2(Principal.apply)
+    implicit val movieFormat = jsonFormat11(Movie.apply(_,_,_,_,_,_,_,_,_,_,_))
+    implicit val moviesFormat = jsonFormat1(Movies)
   }
 
   implicit object IngestibleMovie extends IngestibleMovie
@@ -123,7 +130,13 @@ object Movie extends App {
   def testSerializationAndDeserialization(ms: Seq[Movie]): Boolean = {
     // 5 points
     // TO BE IMPLEMENTED
-    ???
+    import MoviesProtocol._
+    val s = ms.toJson
+    if (ms equals ms.toJson.convertTo[Seq[Movie]]){
+      return true
+    }else{
+      return false
+    }
   }
 
   def getMoviesFromCountry(country: String, movies: Iterator[Try[Movie]]): Try[Seq[Movie]] = {
