@@ -11,37 +11,12 @@ import scala.util.control.NonFatal
 import scala.xml.Node
 
 /**
-  * @author scalaprof
-  */
+ * @author scalaprof
+ */
 object WebCrawler extends App {
 
-  def getURLContent(u: URL): Future[String] =
-    for {
-      s <- MonadOps.asFuture(SourceFromURL(u))
-      w <- MonadOps.asFuture(sourceToString(s, s"Cannot read from source at $u"))
-    } yield w
-
-  def wget(u: URL): Future[Seq[URL]] = {
-    // Hint: write as a for-comprehension, using the method createURL(Option[URL], String) to get the appropriate URL for relative links
-    // 16 points.
-    def getURLs(ns: Node): Seq[Try[URL]] = ??? // TO BE IMPLEMENTED
-
-    def getLinks(g: String): Try[Seq[URL]] = {
-      val ny = HTMLParser.parse(g) recoverWith { case f => Failure(new RuntimeException(s"parse problem with URL $u: $f")) }
-      for (n <- ny; z <- MonadOps.sequence(getURLs(n))) yield z
-    }
-    // Hint: write as a for-comprehension, using getURLContent (above) and getLinks above. You might also need MonadOps.asFuture
-    // 9 points.
-    ??? // TO BE IMPLEMENTED
-  }
-
-  def wget(us: Seq[URL]): Future[Seq[Either[Throwable, Seq[URL]]]] = {
-    val us2 = us.distinct take 10
-    // Hint: Use wget(URL) (above). MonadOps.sequence and Future.sequence are also available to you to use.
-    // 15 points. Implement the rest of this, based on us2 instead of us.
-    // TO BE IMPLEMENTED
-    ???
-  }
+  val uys = for (arg <- args toList) yield getURL(arg)
+  val s = MonadOps.sequence(uys)
 
   def crawler(depth: Int, us: Seq[URL]): Future[Seq[URL]] = {
     def inner(urls: Seq[URL], depth: Int, accum: Seq[URL]): Future[Seq[URL]] =
@@ -53,9 +28,43 @@ object WebCrawler extends App {
     inner(us, depth, Nil)
   }
 
+  def wget(us: Seq[URL]): Future[Seq[Either[Throwable, Seq[URL]]]] = {
+    val us2 = us.distinct take 10
+    // Hint: Use wget(URL) (above). MonadOps.sequence and Future.sequence are also available to you to use.
+    // 15 points. Implement the rest of this, based on us2 instead of us.
+    // TO BE IMPLEMENTED
+    val usfs = for {u <- us2} yield wget(u)
+    val usefs = for (i <- usfs) yield MonadOps.sequence(i)
+    Future.sequence(usefs)
+  }
+
   println(s"web reader: ${args.toList}")
-  val uys = for (arg <- args toList) yield getURL(arg)
-  val s = MonadOps.sequence(uys)
+
+  def wget(u: URL): Future[Seq[URL]] = {
+    // Hint: write as a for-comprehension, using the method createURL(Option[URL], String) to get the appropriate URL for relative links
+    // 16 points.
+    def getURLs(ns: Node): Seq[Try[URL]] = {
+      for {
+        n <- ns \\ "a"
+        h <- n \ "@href"
+        uh <- h.head
+      } yield createURL(Some(u), uh.text)
+    } // TO BE IMPLEMENTED
+
+    def getLinks(g: String): Try[Seq[URL]] = {
+      val ny = HTMLParser.parse(g) recoverWith { case f => Failure(new RuntimeException(s"parse problem with URL $u: $f")) }
+      for (n <- ny; z <- MonadOps.sequence(getURLs(n))) yield z
+    }
+    // Hint: write as a for-comprehension, using getURLContent (above) and getLinks above. You might also need MonadOps.asFuture
+    // 9 points.
+    for {g <- getURLContent(u); us <- MonadOps.asFuture(getLinks(g))} yield us // TO BE IMPLEMENTED
+  }
+
+  def getURLContent(u: URL): Future[String] =
+    for {
+      s <- MonadOps.asFuture(SourceFromURL(u))
+      w <- MonadOps.asFuture(sourceToString(s, s"Cannot read from source at $u"))
+    } yield w
   s match {
     case Success(z) =>
       println(s"invoking crawler on $z")
@@ -70,6 +79,11 @@ object WebCrawler extends App {
       case NonFatal(e) => Failure(WebCrawlerURLException(errorMsg, e))
     }
 
+  private def SourceFromURL(resource: URL): Try[BufferedSource] =
+    try Success(Source.fromURL(resource)) catch {
+      case NonFatal(e) => Failure(WebCrawlerURLException(s"""Cannot get source from URL: $resource""", e))
+    }
+
   private def getURL(resource: String): Try[URL] = createURL(null, resource)
 
   private def createURL(context: Option[URL], resource: String): Try[URL] =
@@ -77,11 +91,6 @@ object WebCrawler extends App {
       case NonFatal(e) =>
         val message: String = s"""Bad URL: ${if (context.isDefined) "context: " + context else ""} resource=$resource"""
         Failure(WebCrawlerURLException(message, e))
-    }
-
-  private def SourceFromURL(resource: URL): Try[BufferedSource] =
-    try Success(Source.fromURL(resource)) catch {
-      case NonFatal(e) => Failure(WebCrawlerURLException(s"""Cannot get source from URL: $resource""", e))
     }
 }
 
